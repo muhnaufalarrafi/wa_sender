@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhatsApp Broadcast</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white shadow-lg rounded-lg p-8 max-w-lg w-full">
+    <h1 class="text-2xl font-bold text-center text-gray-800 mb-6">WhatsApp Broadcast Bot</h1>
+
+    <!-- Form Broadcast -->
+    <form id="broadcastForm" class="space-y-4" enctype="multipart/form-data">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Upload File Nomor (.txt):</label>
+        <input
+          type="file"
+          id="numbers"
+          name="numbers"
+          accept=".txt"
+          required
+          class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Upload Media (Opsional):</label>
+        <input
+          type="file"
+          id="media"
+          name="media"
+          accept="image/*,video/*,application/*"
+          class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Pesan Broadcast:</label>
+        <textarea
+          id="message"
+          name="message"
+          rows="5"
+          placeholder="Tulis pesan broadcast..."
+          required
+          class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+        ></textarea>
+      </div>
+
+      <button
+        type="submit"
+        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        Kirim Pesan
+      </button>
+    </form>
+
+    <!-- QR Code -->
+    <div id="qrcode" class="mt-6 flex justify-center"></div>
+    <div id="status" class="mt-2 text-center text-gray-600"></div>
+
+    <!-- Reset Session Button -->
+    <div class="mt-6">
+        <button
+            id="resetSession"
+            class="w-full bg-red-600 text-white py-2 px-4 rounded-lg shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+        >
+            Reset Session (Akun Baru)
+        </button>
+    </div>
+      
+  </div>
+
+  <script>
+    async function fetchQRCode() {
+        try {
+            const response = await fetch('/get-qr'); // Ambil QR Code dari backend
+            const data = await response.json();
+
+            const qrDiv = document.getElementById('qrcode');
+            const statusDiv = document.getElementById('status');
+
+            if (data.qr) {
+                qrDiv.innerHTML = `<img src="${data.qr}" alt="QR Code" class="w-40 h-40">`; // Gunakan URL Base64 sebagai sumber gambar
+                statusDiv.textContent = 'Pindai QR Code untuk masuk ke WhatsApp.';
+            } else {
+                statusDiv.textContent = data.message;
+                // qrDiv.innerHTML = 'QR Code belum tersedia.';
+            }
+        } catch (error) {
+            console.error('Gagal mengambil QR Code:', error);
+        }
+    }
+
+    // Polling QR Code setiap 5 detik
+    setInterval(fetchQRCode, 5000);
+
+    // Ambil QR Code pertama kali
+    fetchQRCode();
+
+    // Handle form submission
+    document.getElementById('broadcastForm').addEventListener('submit', async (e) => {
+        e.preventDefault(); // Mencegah form submit default
+
+        const formData = new FormData(document.getElementById('broadcastForm')); // Ambil data form
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            alert(result.message); // Tampilkan pesan sukses atau gagal
+        } catch (error) {
+            console.error('Gagal mengirim broadcast:', error);
+            alert('Terjadi kesalahan saat mengirim pesan broadcast.');
+        }
+    });
+
+    // Handle reset session
+    document.getElementById('resetSession').addEventListener('click', async () => {
+        if (confirm('Apakah Anda yakin ingin mereset sesi? Ini akan menghasilkan QR Code baru.')) {
+            try {
+                const response = await fetch('/reset-session', {
+                    method: 'POST',
+                });
+
+                const result = await response.json();
+                alert(result.message); // Tampilkan pesan sukses atau gagal
+                fetchQRCode(); // Ambil QR Code baru
+            } catch (error) {
+                console.error('Gagal mereset sesi:', error);
+                alert('Terjadi kesalahan saat mereset sesi.');
+            }
+        }
+    });
+  </script>
+</body>
+</html>
